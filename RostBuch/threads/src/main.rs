@@ -1,8 +1,11 @@
-use std::{thread, time::Duration};
+use std::{sync::mpsc, thread, time::Duration};
 
 fn main() {
   thread_01();
   move_thread();
+  channels();
+  concurrent_channels();
+  multiple_channels();
 }
 
 fn thread_01() {
@@ -29,4 +32,75 @@ fn move_thread() {
   });
 
   handle.join().unwrap();
+}
+
+fn channels() {
+  let (tx, rx) = mpsc::channel();
+
+  thread::spawn(move || {
+    let val = String::from("hi");
+    tx.send(val).unwrap();
+  });
+
+  let received = rx.recv().unwrap();
+  println!("Got: {}", received);
+}
+
+fn concurrent_channels() {
+  let (tx, rx) = mpsc::channel();
+
+  thread::spawn(move || {
+    let vals = vec![
+      String::from("hi"),
+      String::from("from"),
+      String::from("the"),
+      String::from("thread"),
+    ];
+
+    for val in vals {
+      tx.send(val).unwrap();
+      thread::sleep(Duration::from_secs(1));
+    }
+  });
+
+  for received in rx {
+    println!("Got: {}", received);
+  }
+}
+
+fn multiple_channels() {
+  let (tx, rx) = mpsc::channel();
+
+  let tx1 = tx.clone();
+  thread::spawn(move || {
+    let vals = vec![
+      String::from("hi"),
+      String::from("from"),
+      String::from("the"),
+      String::from("thread"),
+    ];
+
+    for val in vals {
+      tx1.send(val).unwrap();
+      thread::sleep(Duration::from_secs(1));
+    }
+  });
+
+  thread::spawn(move || {
+    let vals = vec![
+      String::from("more"),
+      String::from("messages"),
+      String::from("for"),
+      String::from("you"),
+    ];
+
+    for val in vals {
+      tx.send(val).unwrap();
+      thread::sleep(Duration::from_secs(1));
+    }
+  });
+
+  for received in rx {
+    println!("Got: {}", received);
+  }
 }
